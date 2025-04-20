@@ -85,3 +85,19 @@ def lin(input):
     loss = 2 * (s[0] - s[-1]) / (s[0] + s[-1])
     print('LOSS', loss)
     return pd.DataFrame(input @ v.T, index=input.index), loss
+
+def transform(input_dataframe, max_iters=100, target_loss=1e-3):
+    #############
+    # No need to recompute Gaussian quantiles each time; most of the times
+    # they are identical.
+    #############
+    result = pd.DataFrame(input_dataframe, copy=True)
+    losses = []
+    for i in range(max_iters):
+        print('ITER', i)
+        result, loss = lin(nonlin(result))
+        losses.append(loss)
+        if loss < target_loss:
+            break
+    return result
+
