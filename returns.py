@@ -27,10 +27,10 @@ import pandas as pd
 
 from giide import transform
 
-UNIVERSE = ['SPY', 'QQQ', 'TLT']
+UNIVERSE = ['SPY', 'QQQ', 'TLT', 'XLE', 'EFA']
 returns = cvx.DownloadedMarketData(UNIVERSE, cash_key='USDOLLAR').returns
     
-NSHIFTS = 100
+NSHIFTS = 10
 NCV = 100
 
 rets = returns.iloc[:,:-1]
@@ -51,12 +51,20 @@ rets = tmp.iloc[:, :len(UNIVERSE)]
 vix_and_rates = tmp.iloc[:, len(UNIVERSE):]
 
 rets = rets.dropna()
-targets = np.log(1 + rets) # rets # rets**2
+targets = rets # **2 # np.log(1 + rets) # rets # rets**2
 
 # logrets.cumsum().plot()
 # plt.title('CUMULATIVE LOGRETURNS, ORIGINAL DATA')
 
 transformed_targets = transform(targets, target_loss=1e-3)
+
+targets.rolling(250).std().plot()
+
+plt.figure()
+transformed_targets.rolling(250).std().plot()
+plt.show()
+
+exit(0)
 
 # # plt.figure()
 # transformed_logrets.cumsum().plot()
@@ -81,26 +89,42 @@ X['time'] = (X.index - pd.Timestamp.utcnow()).total_seconds()
 
 # plt.figure()
 
-for col in targets.columns:
-    print('\n'*3 + f'{col} regression on VIX, rates, time, intercept:' + '\n')
-    cv_result = cross_validate(
-        RandomForestRegressor(n_jobs=-1), X, targets[col], cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
-    print('CROSS VALIDATED ACCURACY RANDOM FOREST ORIGINAL DATA')
-    print(cv_result['test_score'])
-    print('MEDIAN R2', np.median(cv_result['test_score']))
-    # plt.plot(cv_result['test_score'], label=col)
+print('\n'*3 + 'regression on VIX, rates, time, intercept:' + '\n')
+cv_result = cross_validate(
+    RandomForestRegressor(n_jobs=-1), X, targets, cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
+print('CROSS VALIDATED ACCURACY RANDOM FOREST ORIGINAL DATA')
+print(cv_result['test_score'])
+print('MEDIAN R2', np.median(cv_result['test_score']))
 
-    # print(sm.OLS(logrets[col], X).fit_regularized().summary())
-
-for col in transformed_targets.columns:
-    print('\n'*3 + f'transformed col {col} regression on VIX, rates, time, intercept:' + '\n')
+print('\n'*3 + f'transformed data regression on VIX, rates, time, intercept:' + '\n')
 #     print(sm.OLS(transformed_logrets[col], X).fit_regularized().summary())
-    cv_result = cross_validate(
-        RandomForestRegressor(n_jobs=-1), X, transformed_targets[col], cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
-    print('CROSS VALIDATED ACCURACY RANDOM FOREST TRANSFORMED DATA')
-    print(cv_result['test_score'])
-    print('MEDIAN R2', np.median(cv_result['test_score']))
-    # plt.plot(cv_result['test_score'], label=col)
+cv_result = cross_validate(
+    RandomForestRegressor(n_jobs=-1), X, transformed_targets, cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
+print('CROSS VALIDATED ACCURACY RANDOM FOREST TRANSFORMED DATA')
+print(cv_result['test_score'])
+print('MEDIAN R2', np.median(cv_result['test_score']))
+
+
+# for col in targets.columns:
+#     print('\n'*3 + f'{col} regression on VIX, rates, time, intercept:' + '\n')
+#     cv_result = cross_validate(
+#         RandomForestRegressor(n_jobs=-1), X, targets[col], cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
+#     print('CROSS VALIDATED ACCURACY RANDOM FOREST ORIGINAL DATA')
+#     print(cv_result['test_score'])
+#     print('MEDIAN R2', np.median(cv_result['test_score']))
+#     # plt.plot(cv_result['test_score'], label=col)
+
+#     # print(sm.OLS(logrets[col], X).fit_regularized().summary())
+
+# for col in transformed_targets.columns:
+#     print('\n'*3 + f'transformed col {col} regression on VIX, rates, time, intercept:' + '\n')
+# #     print(sm.OLS(transformed_logrets[col], X).fit_regularized().summary())
+#     cv_result = cross_validate(
+#         RandomForestRegressor(n_jobs=-1), X, transformed_targets[col], cv=KFold(NCV, shuffle=True), verbose=2, scoring='r2')
+#     print('CROSS VALIDATED ACCURACY RANDOM FOREST TRANSFORMED DATA')
+#     print(cv_result['test_score'])
+#     print('MEDIAN R2', np.median(cv_result['test_score']))
+#     # plt.plot(cv_result['test_score'], label=col)
 
 # plt.legend()
 plt.show()
