@@ -18,6 +18,7 @@
 import numpy as np
 import pandas as pd
 import scipy as sp
+from scipy.interpolate import RBFInterpolator
 
 class GaussianTransformer:
     """Transform to Gaussian."""
@@ -59,6 +60,20 @@ class GaussianTransformer:
     def transf_back(self, input_data: pd.Series):
         return pd.Series(
             np.interp(input_data, self.q_norm, self.q), index=input_data.index)
+
+    # def transf_back(self, input_data: pd.Series):
+    #     return pd.Series(
+    #         RBFInterpolator(
+    #             self.q_norm.reshape(len(self.q_norm), 1),
+    #             self.q.reshape(len(self.q), 1),
+    #             neighbors = 10,
+    #             kernel = 'linear',
+    #             smoothing = 1.,
+    #             # kernel='gaussian',
+    #             # epsilon=10,
+    #             # smoothing=0.0,
+    #         )(input_data.values.reshape(len(input_data), 1)).flatten(),
+    #     index=input_data.index)
 
 # TEMPORARY PLUMBING
 
