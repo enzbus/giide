@@ -1,8 +1,9 @@
+# temporary
 numpy
 scipy
 pandas
-
-# extras
+matplotlib
 statsmodels
 cvxportfolio
-# scikit-learn
+scikit-learn
+
