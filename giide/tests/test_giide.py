@@ -22,7 +22,7 @@ import pandas as pd
 from giide.giide import (
     RandomRotation, FullGaussianMarginal, RobustFullGaussianMarginal,
     compute_normal_quantiles, GIIDE, RandomHouseholder, SVD,
-    QuantilesGaussianMarginal)
+    QuantilesGaussianMarginal, Normalization)
 
 class TestGiide(TestCase):
     """Unit tests for GIIDE."""
@@ -62,6 +62,10 @@ class TestGiide(TestCase):
     def test_layer_SVD_rotation(self):
         """Test SVD layer."""
         self._test_layer(SVD)
+
+    def test_layer_normalization_rotation(self):
+        """Test normalization layer."""
+        self._test_layer(Normalization)
 
     def test_layer_random_householder(self):
         """Test random Householder reflection layer."""

@@ -101,6 +101,36 @@ class SVD(Layer):
         data @= self.v
         return data
 
+class Normalization(Layer):
+    """Normalization of input data."""
+
+    # placeholder
+    m = np.array([])
+    s = np.array([])
+
+    def fit_transform(self, data: np.array) -> np.array:
+        """Fit the layer with a 2D array and (forward) transform it."""
+        self.m = np.mean(data, axis=0)
+        data -= self.m
+        self.s = np.mean(data**2, axis=0)
+        if np.any(self.s == 0.):
+            raise ValueError("A column has all identical values.")
+        data /= self.s
+        return data
+
+    def transform(self, data: np.array) -> np.array:
+        """Forward transform a 2D array."""
+        data -= self.m
+        data /= self.s
+        return data
+
+    def transform_back(self, data: np.array) -> np.array:
+        """Backward transform a 2D array."""
+        data *= self.s
+        data += self.m
+        return data
+
+
 class RandomHouseholder(Layer):
     """Random Householder reflection."""
 
@@ -202,8 +232,6 @@ class QuantilesGaussianMarginal(FullGaussianMarginal):
             self.qs = np.sort(data, axis=0)
         else:
             self.qs = np.quantile(data, self._quantiles, axis=0)
-
-        breakpoint()
 
         if not 'q_norm_raw' in self.cache:
             _raw_qnorm = compute_normal_quantiles(len(data))
