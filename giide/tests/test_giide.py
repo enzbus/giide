@@ -22,14 +22,15 @@ import pandas as pd
 from giide.giide import (
     RandomRotation, FullGaussianMarginal, RobustFullGaussianMarginal,
     compute_normal_quantiles, GIIDE, RandomHouseholder, SVD,
-    QuantilesGaussianMarginal)
+    QuantilesGaussianMarginal, Normalization, RegularizedGaussianMarginal,
+    RegularizedGIIDE)
 
 class TestGiide(TestCase):
     """Unit tests for GIIDE."""
 
     def _test_layer( # pylint: disable=dangerous-default-value
             self, layer_class: type, ntrainobs: int = 100, ntestobs: int = 100,
-            init_kwargs: dict ={}):
+            init_kwargs: dict ={}, normalize=False, duplicates=True):
         """Base test case for layer."""
         layer = layer_class(**init_kwargs)
         if ntrainobs % 2 != 0:
@@ -37,7 +38,11 @@ class TestGiide(TestCase):
         data = np.random.randn(ntrainobs//2, 3)
 
         # we add duplicates
-        data = np.concat([data,data], axis=0)
+        if duplicates:
+            data = np.concat([data,data], axis=0)
+        if normalize:
+            data -= data.mean(axis=0)
+            data /= np.sqrt((data**2).mean(axis=0))
 
         data_transf = layer.fit_transform(np.copy(data))
         self.assertEqual(data_transf.shape, data.shape)
@@ -45,6 +50,9 @@ class TestGiide(TestCase):
         self.assertTrue(np.allclose(data, data_transf_back))
 
         data2 = np.random.randn(ntestobs, 3)
+        if normalize:
+            data2 -= data2.mean(axis=0)
+            data2 /= np.sqrt((data2**2).mean(axis=0))
 
         # checking .99 quantile of abs diffs if very small, for layers that
         # don't do extrapolation
@@ -62,6 +70,10 @@ class TestGiide(TestCase):
     def test_layer_SVD_rotation(self):
         """Test SVD layer."""
         self._test_layer(SVD)
+
+    def test_layer_normalization_rotation(self):
+        """Test normalization layer."""
+        self._test_layer(Normalization)
 
     def test_layer_random_householder(self):
         """Test random Householder reflection layer."""
@@ -88,6 +100,17 @@ class TestGiide(TestCase):
         self._test_layer(RobustFullGaussianMarginal, ntrainobs=10000,
             ntestobs=100)
 
+    def test_layer_regularized_gaussian_marginals(self):
+        """Test ReGM layer."""
+        self._test_layer(
+            RegularizedGaussianMarginal, normalize=True, duplicates=False)
+
     def test_simple_giide(self):
         self._test_layer(
             GIIDE, ntrainobs=10000, ntestobs=100, init_kwargs={'n_layers': 3})
+
+    def test_regularized_giide(self):
+        self._test_layer(
+            RegularizedGIIDE, ntrainobs=10000, ntestobs=100, duplicates=False,
+            init_kwargs={'n_layers': 3})
+    
