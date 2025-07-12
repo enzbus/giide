@@ -22,6 +22,8 @@ import pandas as pd
 import scipy as sp
 from tqdm import tqdm
 
+from .gaussian_marginals import gaussian_marginalizer
+
 logger = logging.getLogger(__name__)
 
 class Layer(ABC):
@@ -112,7 +114,7 @@ class Normalization(Layer):
         """Fit the layer with a 2D array and (forward) transform it."""
         self.m = np.mean(data, axis=0)
         data -= self.m
-        self.s = np.mean(data**2, axis=0)
+        self.s = np.sqrt(np.mean(data**2, axis=0))
         if np.any(self.s == 0.):
             raise ValueError("A column has all identical values.")
         data /= self.s
@@ -308,6 +310,29 @@ class RobustFullGaussianMarginal(Layer):
                 data[:, column], self.q_norms[column], self.qs[column])
         return data
 
+class RegularizedGaussianMarginal(RobustFullGaussianMarginal):
+    """Transformation of the marginals to normals, using regularized PWL."""
+
+    # placeholders
+    qs = ()
+    q_norms = ()
+
+    def fit_transform(self, data: np.array) -> np.array:
+        """Fit the layer with a 2D array and (forward) transform it."""
+
+        self.qs = []
+        self.q_norms = []
+
+        for column in range(data.shape[1]):
+            nodes, node_values = gaussian_marginalizer(
+                samples=data[:, column], n_nodes = 10, qnorm_extrapolate = 100.,
+                slopes_regularizer = 1e-2)
+            self.qs.append(node_values)
+            self.q_norms.append(nodes)
+
+        return self.transform(data)
+
+
 class GIIDE(Layer):
     """GIIDE model.
     
@@ -389,4 +414,47 @@ class GIIDE(Layer):
         data = np.copy(data)
         for layer in tqdm(self._layers[::-1]):
             data = layer.transform_back(data)
+        return data
+
+class RegularizedGIIDE(GIIDE):
+    """New approach using regularized PWL fit."""
+
+    def __init__(
+            self, n_layers: int, n_householders: int = 1):
+        self._n_layers = n_layers
+        self._layers = []
+        self._n_householders = n_householders
+
+    def fit_transform(self, data: np.array) -> np.array:
+        """Fit the model with a 2D array and (forward) transform it."""
+
+        data = np.copy(data)
+
+        for _ in tqdm(range(self._n_layers)):
+
+            # log normality stat
+            print(f"p-values of normality test at start of stacked layer {_}")
+            print(sp.stats.normaltest(data).pvalue)
+
+            # normalize
+            layer = Normalization()
+            data = layer.fit_transform(data)
+            self._layers.append(layer)
+
+            # regularized PWL marginals
+            layer = RegularizedGaussianMarginal()
+            data = layer.fit_transform(data)
+            self._layers.append(layer)
+
+            # random rotation(s)
+            for _ in range(self._n_householders):
+                layer = RandomHouseholder()
+                data = layer.fit_transform(data)
+                self._layers.append(layer)
+            
+            if self._n_householders == -1:
+                layer = RandomRotation()
+                data = layer.fit_transform(data)
+                self._layers.append(layer)
+
         return data

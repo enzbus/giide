@@ -64,7 +64,7 @@ def gaussian_marginalizer(
     ]
 
     # this causes program to be a QP instead of LS, most likely not needed
-    constraints += [a_s >= 0] # [a_s >= 1e-4] # do we want tiny slope instead? 
+    constraints += [a_s >= 0] # [a_s >= 1e-4] # do we want tiny slope instead?
 
     # defaults to OSQP, should be fine
     cp.Problem(cp.Minimize(objective), constraints).solve()
